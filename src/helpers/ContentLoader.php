@@ -3,6 +3,7 @@
 namespace helpers;
 
 use Monolog\Logger;
+use React\Promise;
 
 /**
  * Helper class for loading extern items
@@ -63,9 +64,13 @@ class ContentLoader {
      * @return void
      */
     public function update() {
-        foreach ($this->sourcesDao->getByLastUpdate() as $source) {
-            $this->fetch($source);
-        }
+        $promise = Promise\all(array_map(function($source) {
+            $resolver = function(callable $resolve, callable $reject, callable $notify) use ($source) {
+                $resolve($this->fetch($source));
+            };
+            return new Promise\Promise($resolver);
+        }, $this->sourcesDao->getByLastUpdate()));
+        $promise->done();
         $this->cleanup();
     }
 
